@@ -8,27 +8,29 @@ from datetime import datetime, timedelta
 import pytz
 import math
 import time
+import random
 import requests
 import warnings
 
-# Suppress pandas warnings for cleaner UI
+# --- 0. INITIAL SETUP & CONFIGURATION ---
 warnings.filterwarnings('ignore')
 
-# --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Market Master Titan Infinity",
+    page_title="Titan Infinity Ultra",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
     page_icon="⚡"
 )
 
-# --- 2. TITAN CSS ENGINE (Advanced Styling) ---
+# --- 1. RESPONSIVE CSS ENGINE (MOBILE FIX) ---
 st.markdown("""
 <style>
-    /* Global Variables */
+    /* GLOBAL RESET & VARIABLES */
     :root {
         --primary: #00E676;
+        --primary-dim: rgba(0, 230, 118, 0.1);
         --secondary: #2979FF;
+        --secondary-dim: rgba(41, 98, 255, 0.1);
         --danger: #FF1744;
         --warning: #FFC400;
         --bg-dark: #0A0E14;
@@ -38,164 +40,161 @@ st.markdown("""
         --border-color: #2A2E39;
     }
     
-    /* Main Background */
     .stApp {
         background-color: var(--bg-dark);
         color: var(--text-primary);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        font-family: 'Inter', sans-serif;
     }
-    
-    /* Titan Header Gradient */
+
+    /* --- MOBILE RESPONSIVE HEADER FIX --- */
     .titan-header {
-        font-size: 48px;
         font-weight: 900;
         text-transform: uppercase;
         background: linear-gradient(90deg, #00E676 0%, #2979FF 50%, #FF1744 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 20px;
-        letter-spacing: 3px;
-        text-shadow: 0px 0px 20px rgba(0, 230, 118, 0.3);
+        letter-spacing: 1px;
+        text-align: center;
+        
+        /* Auto-Scale Font Size */
+        font-size: clamp(28px, 6vw, 52px); 
+        line-height: 1.2;
     }
     
-    /* Glassmorphism Card */
+    .section-header {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: 20px;
+        margin-bottom: 10px;
+        border-left: 4px solid var(--secondary);
+        padding-left: 10px;
+    }
+
+    /* --- HORIZONTAL SCROLLING TABS (FIX FOR TABS CUTTING OFF) --- */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: transparent;
+        padding-bottom: 5px;
+        
+        /* Force Horizontal Scroll on Mobile */
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; /* Hide scrollbar Firefox */
+    }
+    
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+        display: none; /* Hide scrollbar Chrome/Safari */
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        white-space: nowrap;
+        background-color: rgba(255,255,255,0.03);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 13px;
+        border: 1px solid var(--border-color);
+        transition: all 0.2s;
+        padding: 0 20px;
+        min-width: fit-content; /* Prevents squishing */
+        flex-shrink: 0; /* Prevents shrinking */
+    }
+
+    .stTabs [aria-selected="true"] {
+        color: #fff;
+        background-color: var(--secondary-dim);
+        border-color: var(--secondary);
+        box-shadow: 0 0 15px rgba(41, 98, 255, 0.3);
+    }
+
+    /* --- CARD DESIGN --- */
     .stat-card {
-        background: rgba(19, 23, 34, 0.8);
-        backdrop-filter: blur(10px);
+        background: rgba(19, 23, 34, 0.95);
         border: 1px solid var(--border-color);
         border-radius: 12px;
-        padding: 24px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        height: 100%;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 20px;
+        margin-bottom: 15px;
         position: relative;
         overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
     
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: var(--primary);
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    
-    .stat-card:hover {
+    .stat-card-hover:hover {
         border-color: var(--primary);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-        transform: translateY(-5px);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 230, 118, 0.15);
     }
-    
-    .stat-card:hover::before {
-        opacity: 1;
-    }
-    
-    /* Typography */
+
     .ticker-symbol {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 800;
         color: var(--text-primary);
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
     }
     
     .ticker-price {
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 700;
         color: var(--primary);
         font-variant-numeric: tabular-nums;
-        margin: 10px 0;
+        margin: 5px 0;
     }
-    
-    /* Signal Badges */
-    .signal-badge {
-        padding: 6px 14px;
-        border-radius: 6px;
-        font-size: 12px;
+
+    /* --- BADGES --- */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 11px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 1.5px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        letter-spacing: 1px;
+        display: inline-block;
     }
-    .signal-buy { background: rgba(0, 230, 118, 0.2); color: #00E676; border: 1px solid #00E676; }
-    .signal-sell { background: rgba(255, 23, 68, 0.2); color: #FF1744; border: 1px solid #FF1744; }
-    .signal-hold { background: rgba(255, 196, 0, 0.2); color: #FFC400; border: 1px solid #FFC400; }
-    
-    /* Custom Buttons */
+    .badge-buy { background: var(--primary-dim); color: var(--primary); border: 1px solid var(--primary); }
+    .badge-sell { background: rgba(255, 23, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+    .badge-neutral { background: rgba(255, 196, 0, 0.1); color: var(--warning); border: 1px solid var(--warning); }
+
+    /* --- BUTTONS --- */
     .stButton > button {
         width: 100%;
-        background: linear-gradient(135deg, #2962FF 0%, #1565C0 100%);
+        background: linear-gradient(135deg, #2962FF 0%, #0039CB 100%);
         color: white;
         border: none;
-        padding: 14px 24px;
+        padding: 12px 15px;
         border-radius: 8px;
         font-weight: 700;
         font-size: 14px;
-        letter-spacing: 1px;
-        transition: all 0.3s;
         text-transform: uppercase;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        letter-spacing: 1px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
     
     .stButton > button:hover {
         background: linear-gradient(135deg, #448AFF 0%, #2962FF 100%);
-        box-shadow: 0 8px 24px rgba(41, 98, 255, 0.5);
-        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(41, 98, 255, 0.5);
     }
+
+    /* --- DATAFRAME FIX --- */
+    .dataframe { font-size: 12px !important; background-color: var(--card-bg); }
     
-    /* Buy/Sell Specific Buttons */
-    .buy-btn > button { background: linear-gradient(135deg, #00E676 0%, #00C853 100%) !important; }
-    .sell-btn > button { background: linear-gradient(135deg, #FF1744 0%, #D50000 100%) !important; }
-    
-    /* Inputs */
+    /* --- INPUT FIELDS --- */
     .stTextInput > div > div > input {
         background-color: #1A1E29;
         color: white;
         border: 1px solid #333;
         border-radius: 8px;
-        height: 50px;
-        font-size: 18px;
-        padding-left: 15px;
     }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 20px;
-        background-color: transparent;
-        padding-bottom: 10px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: rgba(255,255,255,0.03);
-        border-radius: 8px;
-        color: var(--text-secondary);
-        font-weight: 600;
-        border: 1px solid transparent;
-        transition: all 0.2s;
-        padding: 0 20px;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        color: #fff;
-        background-color: rgba(41, 98, 255, 0.1);
-        border-color: var(--secondary);
-    }
-    
-    /* Dataframes */
-    .stDataFrame { border: none !important; }
-    .dataframe { background-color: var(--card-bg); font-family: 'Roboto Mono', monospace; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. MATH ENGINE (Core Calculation Logic) ---
-class TechnicalIndicators:
+# --- 2. ADVANCED MATH ENGINE (15+ INDICATORS) ---
+class MathEngine:
     @staticmethod
     def sma(series, period):
         return series.rolling(window=period).mean()
@@ -203,11 +202,6 @@ class TechnicalIndicators:
     @staticmethod
     def ema(series, period):
         return series.ewm(span=period, adjust=False).mean()
-
-    @staticmethod
-    def wma(series, period):
-        weights = np.arange(1, period + 1)
-        return series.rolling(period).apply(lambda x: np.dot(x, weights) / weights.sum(), raw=True)
 
     @staticmethod
     def rsi(series, period=14):
@@ -244,7 +238,7 @@ class TechnicalIndicators:
 
     @staticmethod
     def supertrend(high, low, close, period=10, multiplier=3):
-        atr_val = TechnicalIndicators.atr(high, low, close, period)
+        atr_val = MathEngine.atr(high, low, close, period)
         hl2 = (high + low) / 2
         up = hl2 - (multiplier * atr_val)
         down = hl2 + (multiplier * atr_val)
@@ -294,12 +288,12 @@ class TechnicalIndicators:
         minus_dm = low.diff()
         plus_dm[plus_dm < 0] = 0
         minus_dm[minus_dm > 0] = 0
-        tr = TechnicalIndicators.atr(high, low, close, period)
+        tr = MathEngine.atr(high, low, close, period)
         plus_di = 100 * (plus_dm.ewm(alpha=1/period).mean() / tr)
         minus_di = 100 * (abs(minus_dm).ewm(alpha=1/period).mean() / tr)
         dx = (abs(plus_di - minus_di) / abs(plus_di + minus_di)) * 100
         adx_val = dx.ewm(alpha=1/period).mean()
-        return adx_val, plus_di, minus_di
+        return adx_val
 
     @staticmethod
     def ichimoku(high, low, close):
@@ -321,8 +315,135 @@ class TechnicalIndicators:
         sma = tp.rolling(window=period).mean()
         mad = tp.rolling(window=period).apply(lambda x: np.abs(x - x.mean()).mean())
         return (tp - sma) / (0.015 * mad)
+    
+    @staticmethod
+    def williams_r(high, low, close, period=14):
+        highest_high = high.rolling(window=period).max()
+        lowest_low = low.rolling(window=period).min()
+        return -100 * ((highest_high - close) / (highest_high - lowest_low))
 
-# --- 4. MARKET ANALYZER (Data Processing) ---
+    @staticmethod
+    def obv(close, volume):
+        return (np.sign(close.diff()) * volume).fillna(0).cumsum()
+
+# --- 3. BACKTEST ENGINE (NEW FEATURE) ---
+class BacktestEngine:
+    def __init__(self, df, initial_capital=100000):
+        self.df = df
+        self.initial_capital = initial_capital
+        self.balance = initial_capital
+        self.positions = 0
+        self.equity_curve = []
+        self.trades = []
+
+    def run_strategy(self, strategy_type="CROSSOVER"):
+        # Reset
+        self.balance = self.initial_capital
+        self.positions = 0
+        self.trades = []
+        self.equity_curve = [self.initial_capital]
+        
+        df = self.df.copy()
+        
+        for i in range(1, len(df)):
+            curr = df.iloc[i]
+            prev = df.iloc[i-1]
+            price = curr['Close']
+            date = df.index[i]
+            
+            signal = 0 # 0: Hold, 1: Buy, -1: Sell
+            
+            if strategy_type == "CROSSOVER":
+                # Golden Cross Strategy
+                if curr['SMA_50'] > curr['SMA_200'] and prev['SMA_50'] <= prev['SMA_200']:
+                    signal = 1
+                elif curr['SMA_50'] < curr['SMA_200'] and prev['SMA_50'] >= prev['SMA_200']:
+                    signal = -1
+                    
+            elif strategy_type == "MOMENTUM":
+                # RSI Strategy
+                if curr['RSI'] < 30 and prev['RSI'] >= 30:
+                    signal = 1
+                elif curr['RSI'] > 70 and prev['RSI'] <= 70:
+                    signal = -1
+            
+            elif strategy_type == "SUPERTREND":
+                if curr['ST_Dir'] == 1 and prev['ST_Dir'] != 1:
+                    signal = 1
+                elif curr['ST_Dir'] != 1 and prev['ST_Dir'] == 1:
+                    signal = -1
+
+            # Execution Logic
+            if signal == 1 and self.balance > 0:
+                # Buy Max
+                qty = math.floor(self.balance / price)
+                if qty > 0:
+                    cost = qty * price
+                    self.balance -= cost
+                    self.positions += qty
+                    self.trades.append({
+                        'Type': 'BUY', 'Price': price, 'Date': date, 
+                        'Qty': qty, 'Balance': self.balance
+                    })
+            
+            elif signal == -1 and self.positions > 0:
+                # Sell All
+                revenue = self.positions * price
+                self.balance += revenue
+                self.trades.append({
+                    'Type': 'SELL', 'Price': price, 'Date': date, 
+                    'Qty': self.positions, 'Balance': self.balance
+                })
+                self.positions = 0
+            
+            # Track Equity
+            current_equity = self.balance + (self.positions * price)
+            self.equity_curve.append(current_equity)
+            
+        return self.equity_curve, self.trades
+
+    def get_metrics(self):
+        if not self.equity_curve: return {}
+        start = self.equity_curve[0]
+        end = self.equity_curve[-1]
+        
+        ret = ((end - start) / start) * 100
+        max_drawdown = 0
+        peak = start
+        
+        for val in self.equity_curve:
+            if val > peak: peak = val
+            dd = (peak - val) / peak
+            if dd > max_drawdown: max_drawdown = dd
+            
+        win_trades = 0
+        loss_trades = 0
+        
+        # Calculate PnL per trade cycle
+        trade_pnls = []
+        last_buy_price = 0
+        
+        for t in self.trades:
+            if t['Type'] == 'BUY':
+                last_buy_price = t['Price']
+            elif t['Type'] == 'SELL' and last_buy_price > 0:
+                pnl = (t['Price'] - last_buy_price) / last_buy_price
+                trade_pnls.append(pnl)
+                if pnl > 0: win_trades += 1
+                else: loss_trades += 1
+                
+        total_trades = win_trades + loss_trades
+        win_rate = (win_trades / total_trades * 100) if total_trades > 0 else 0
+        
+        return {
+            "Total Return": ret,
+            "Max Drawdown": max_drawdown * 100,
+            "Trades Executed": total_trades,
+            "Win Rate": win_rate,
+            "Final Equity": end
+        }
+
+# --- 4. MARKET ANALYZER ---
 class MarketAnalyzer:
     def __init__(self, ticker):
         self.ticker = ticker
@@ -337,44 +458,39 @@ class MarketAnalyzer:
         except:
             return False
 
-    def get_live_quote(self):
-        try:
-            ticker_obj = yf.Ticker(self.ticker)
-            data = ticker_obj.history(period="1d")
-            if not data.empty:
-                return data.iloc[-1]['Close'], data.iloc[-1]
-            return None, None
-        except:
-            return None, None
-
     def process_technical_data(self):
         if self.df.empty: return
         
-        h, l, c, v = self.df['High'], self.df['Low'], self.df['Close'], self.df['Volume']
-        
-        # Moving Averages
-        self.df['SMA_20'] = TechnicalIndicators.sma(c, 20)
-        self.df['SMA_50'] = TechnicalIndicators.sma(c, 50)
-        self.df['SMA_200'] = TechnicalIndicators.sma(c, 200)
-        self.df['EMA_20'] = TechnicalIndicators.ema(c, 20)
-        
-        # Momentum
-        self.df['RSI'] = TechnicalIndicators.rsi(c)
-        self.df['Stoch_K'], self.df['Stoch_D'] = TechnicalIndicators.stochastic(h, l, c)
-        self.df['CCI'] = TechnicalIndicators.cci(h, l, c)
+        c = self.df['Close']
+        h = self.df['High']
+        l = self.df['Low']
+        v = self.df['Volume']
         
         # Trend
-        self.df['MACD'], self.df['MACD_Signal'], self.df['MACD_Hist'] = TechnicalIndicators.macd(c)
-        self.df['ADX'], self.df['DI_Plus'], self.df['DI_Minus'] = TechnicalIndicators.adx(h, l, c)
-        self.df['SuperTrend'], self.df['ST_Dir'] = TechnicalIndicators.supertrend(h, l, c)
+        self.df['SMA_20'] = MathEngine.sma(c, 20)
+        self.df['SMA_50'] = MathEngine.sma(c, 50)
+        self.df['SMA_200'] = MathEngine.sma(c, 200)
+        self.df['EMA_20'] = MathEngine.ema(c, 20)
         
-        # Volatility
-        self.df['BB_Up'], self.df['BB_Mid'], self.df['BB_Low'] = TechnicalIndicators.bollinger_bands(c)
-        self.df['ATR'] = TechnicalIndicators.atr(h, l, c)
+        # Momentum
+        self.df['RSI'] = MathEngine.rsi(c)
+        self.df['Stoch_K'], self.df['Stoch_D'] = MathEngine.stochastic(h, l, c)
+        self.df['CCI'] = MathEngine.cci(h, l, c)
+        self.df['WilliamsR'] = MathEngine.williams_r(h, l, c)
+        
+        # Complex
+        self.df['MACD'], self.df['MACD_Signal'], self.df['MACD_Hist'] = MathEngine.macd(c)
+        self.df['ADX'] = MathEngine.adx(h, l, c)
+        self.df['SuperTrend'], self.df['ST_Dir'] = MathEngine.supertrend(h, l, c)
+        
+        # Bands
+        self.df['BB_Up'], self.df['BB_Mid'], self.df['BB_Low'] = MathEngine.bollinger_bands(c)
+        self.df['ATR'] = MathEngine.atr(h, l, c)
         
         # Advanced
-        self.df['Tenkan'], self.df['Kijun'], self.df['SpanA'], self.df['SpanB'], self.df['Chikou'] = TechnicalIndicators.ichimoku(h, l, c)
-        self.df['VWAP'] = TechnicalIndicators.vwap(h, l, c, v)
+        self.df['Tenkan'], self.df['Kijun'], self.df['SpanA'], self.df['SpanB'], self.df['Chikou'] = MathEngine.ichimoku(h, l, c)
+        self.df['VWAP'] = MathEngine.vwap(h, l, c, v)
+        self.df['OBV'] = MathEngine.obv(c, v)
 
     def calculate_pivot_points(self):
         row = self.df.iloc[-1]
@@ -385,6 +501,50 @@ class MarketAnalyzer:
             "R2": p+(h-l), "S2": p-(h-l), 
             "R3": h+2*(p-l), "S3": l-2*(h-p)
         }
+    
+    def calculate_fibonacci(self):
+        # Lookback 1 year
+        max_h = self.df['High'].max()
+        min_l = self.df['Low'].min()
+        diff = max_h - min_l
+        return {
+            "0%": max_h,
+            "23.6%": max_h - 0.236 * diff,
+            "38.2%": max_h - 0.382 * diff,
+            "50%": max_h - 0.5 * diff,
+            "61.8%": max_h - 0.618 * diff,
+            "100%": min_l
+        }
+
+    def detect_candlestick_patterns(self):
+        if self.df.empty: return []
+        row = self.df.iloc[-1]
+        prev = self.df.iloc[-2]
+        patterns = []
+        
+        body = abs(row['Close'] - row['Open'])
+        full_range = row['High'] - row['Low']
+        
+        if full_range == 0: return []
+        
+        # Doji
+        if body <= 0.1 * full_range:
+            patterns.append("Doji (Indecision)")
+            
+        # Hammer
+        if (row['High'] - max(row['Open'], row['Close'])) < (0.2 * body) and \
+           (min(row['Open'], row['Close']) - row['Low']) > (2 * body):
+            patterns.append("Hammer (Bullish)")
+            
+        # Engulfing
+        if row['Close'] > row['Open'] and prev['Close'] < prev['Open']:
+            if row['Close'] > prev['Open'] and row['Open'] < prev['Close']:
+                patterns.append("Bullish Engulfing")
+        elif row['Close'] < row['Open'] and prev['Close'] > prev['Open']:
+            if row['Close'] < prev['Open'] and row['Open'] > prev['Close']:
+                patterns.append("Bearish Engulfing")
+                
+        return patterns
 
     def score_stock(self, mode):
         if self.df.empty: return 0, []
@@ -396,33 +556,48 @@ class MarketAnalyzer:
         close = curr['Close']
         
         if mode == "INTRADAY":
-            if rsi > 50 and rsi < 70: score += 10; reasons.append("Momentum (RSI)")
-            if rsi < 30: score += 20; reasons.append("Oversold (RSI < 30)")
-            if curr['ST_Dir'] == 1: score += 25; reasons.append("SuperTrend Bullish")
+            # Momentum Factors
+            if rsi > 50 and rsi < 70: score += 10; reasons.append("Strong Momentum")
+            if rsi < 30: score += 15; reasons.append("Oversold (Bounce Likely)")
+            
+            # Trend Factors
+            if curr['ST_Dir'] == 1: score += 20; reasons.append("SuperTrend Bullish")
             if close > curr['VWAP']: score += 15; reasons.append("Price > VWAP")
-            if curr['MACD'] > curr['MACD_Signal']: score += 10; reasons.append("MACD Bull Cross")
-            if curr['ADX'] > 25: score += 10; reasons.append("Strong Trend (ADX)")
+            if curr['MACD'] > curr['MACD_Signal']: score += 10; reasons.append("MACD Crossover")
+            
+            # Strength Factors
+            if curr['ADX'] > 25: score += 10; reasons.append("Trend Strength High")
             if close > curr['EMA_20']: score += 10; reasons.append("Above 20 EMA")
-        else:
-            if close > curr['SMA_200']: score += 30; reasons.append("Long Term Bull (>200 SMA)")
-            if curr['SMA_50'] > curr['SMA_200']: score += 15; reasons.append("Golden Cross")
-            if rsi > 40 and rsi < 65: score += 10; reasons.append("Stable RSI")
-            if curr['SpanA'] > curr['SpanB']: score += 15; reasons.append("Ichimoku Cloud Green")
+            if curr['CCI'] > 100: score += 5; reasons.append("CCI Breakout")
+            if curr['Stoch_K'] < 20: score += 5; reasons.append("Stoch Oversold")
+
+        else: # DELIVERY
+            # Long Term Trend
+            if close > curr['SMA_200']: score += 25; reasons.append("Bull Market (>200 SMA)")
+            if curr['SMA_50'] > curr['SMA_200']: score += 15; reasons.append("Golden Cross Active")
+            
+            # Value/Stability
+            if rsi > 40 and rsi < 65: score += 10; reasons.append("Stable RSI Zone")
+            if curr['SpanA'] > curr['SpanB']: score += 10; reasons.append("Ichimoku Cloud Green")
             if close < curr['BB_Low']: score += 20; reasons.append("Deep Value (Lower BB)")
-            if curr['MACD'] > 0: score += 10; reasons.append("Positive Trend Cycle")
+            
+            # Volume & Cycles
+            if curr['MACD'] > 0: score += 10; reasons.append("Positive Cycle")
+            if curr['OBV'] > self.df['OBV'].iloc[-20]: score += 10; reasons.append("Volume Accumulation")
             
         return min(score, 100), reasons
 
-# --- 5. CHART FACTORY (Visualizations) ---
+# --- 5. CHART FACTORY ---
 class ChartFactory:
     @staticmethod
     def create_advanced_chart(df, ticker, mode):
+        # 3 Rows: Price, RSI, MACD
         fig = make_subplots(
             rows=3, cols=1, shared_xaxes=True, 
             vertical_spacing=0.03, row_heights=[0.6, 0.2, 0.2]
         )
         
-        # Price
+        # 1. Price Chart
         fig.add_trace(go.Candlestick(
             x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
             name='Price'
@@ -432,29 +607,35 @@ class ChartFactory:
             fig.add_trace(go.Scatter(x=df.index, y=df['VWAP'], line=dict(color='#FFD700', width=1), name='VWAP'), row=1, col=1)
             fig.add_trace(go.Scatter(x=df.index, y=df['BB_Up'], line=dict(color='gray', width=1, dash='dot'), name='BB'), row=1, col=1)
             fig.add_trace(go.Scatter(x=df.index, y=df['BB_Low'], line=dict(color='gray', width=1, dash='dot'), showlegend=False), row=1, col=1)
+            
+            # SuperTrend Markers
             colors = ['#00E676' if x == 1 else '#FF1744' for x in df['ST_Dir']]
             fig.add_trace(go.Scatter(x=df.index, y=df['SuperTrend'], mode='markers', marker=dict(color=colors, size=3), name='SuperTrend'), row=1, col=1)
+            
         else:
             fig.add_trace(go.Scatter(x=df.index, y=df['SMA_50'], line=dict(color='#2979FF', width=1), name='50 SMA'), row=1, col=1)
             fig.add_trace(go.Scatter(x=df.index, y=df['SMA_200'], line=dict(color='#AA00FF', width=2), name='200 SMA'), row=1, col=1)
+            # Ichimoku
             fig.add_trace(go.Scatter(x=df.index, y=df['SpanA'], line=dict(color='rgba(0,230,118,0.2)'), fill=None, name='Cloud'), row=1, col=1)
             fig.add_trace(go.Scatter(x=df.index, y=df['SpanB'], line=dict(color='rgba(255,23,68,0.2)'), fill='tonexty', showlegend=False), row=1, col=1)
 
-        # RSI
+        # 2. RSI
         fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], line=dict(color='#E040FB', width=2), name='RSI'), row=2, col=1)
         fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
         fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
         
-        # MACD
-        colors = ['#00E676' if v >= 0 else '#FF1744' for v in df['MACD_Hist']]
-        fig.add_trace(go.Bar(x=df.index, y=df['MACD_Hist'], marker_color=colors, name='MACD'), row=3, col=1)
-        fig.add_trace(go.Scatter(x=df.index, y=df['MACD'], line=dict(color='#2979FF'), name='MACD Line'), row=3, col=1)
-        fig.add_trace(go.Scatter(x=df.index, y=df['MACD_Signal'], line=dict(color='#FF9100'), name='Signal'), row=3, col=1)
+        # 3. MACD
+        hist_colors = ['#00E676' if v >= 0 else '#FF1744' for v in df['MACD_Hist']]
+        fig.add_trace(go.Bar(x=df.index, y=df['MACD_Hist'], marker_color=hist_colors, name='MACD'), row=3, col=1)
+        fig.add_trace(go.Scatter(x=df.index, y=df['MACD'], line=dict(color='#2979FF'), name='Line'), row=3, col=1)
+        fig.add_trace(go.Scatter(x=df.index, y=df['MACD_Signal'], line=dict(color='#FF9100'), name='Sig'), row=3, col=1)
         
+        # Mobile Optimization Config
         fig.update_layout(
-            template="plotly_dark", height=700, margin=dict(l=0,r=0,t=0,b=0),
+            template="plotly_dark", height=600, margin=dict(l=0,r=0,t=0,b=0),
             xaxis_rangeslider_visible=False, showlegend=False,
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            dragmode='pan'
         )
         return fig
 
@@ -478,7 +659,7 @@ class ChartFactory:
                 ]
             }
         ))
-        fig.update_layout(height=200, margin=dict(l=20,r=20,t=40,b=20), paper_bgcolor='rgba(0,0,0,0)')
+        fig.update_layout(height=180, margin=dict(l=10,r=10,t=20,b=10), paper_bgcolor='rgba(0,0,0,0)')
         return fig
 
 # --- 6. PORTFOLIO MANAGER ---
@@ -506,7 +687,7 @@ class PortfolioManager:
             else:
                 pf['holdings'][ticker] = {'qty': qty, 'avg': price}
             pf['history'].append({'type': 'BUY', 'ticker': ticker, 'qty': qty, 'price': price, 'date': datetime.now()})
-            return True, "Order Executed Successfully"
+            return True, f"BOUGHT {qty} {ticker}"
         return False, "Insufficient Funds"
 
     @staticmethod
@@ -521,9 +702,9 @@ class PortfolioManager:
                 if h['qty'] == 0:
                     del pf['holdings'][ticker]
                 pf['history'].append({'type': 'SELL', 'ticker': ticker, 'qty': qty, 'price': price, 'date': datetime.now()})
-                return True, "Order Executed Successfully"
-            return False, "Insufficient Holdings"
-        return False, "Stock Not Found in Portfolio"
+                return True, f"SOLD {qty} {ticker}"
+            return False, "Not enough shares"
+        return False, "Stock not owned"
 
     @staticmethod
     def get_metrics():
@@ -533,10 +714,11 @@ class PortfolioManager:
         h_list = []
         
         for t, d in pf['holdings'].items():
+            # Try fetch live price, else fallback
             try:
                 ltp = yf.Ticker(t).history(period="1d")['Close'].iloc[-1]
             except:
-                ltp = d['avg'] # Fallback
+                ltp = d['avg']
             
             val = d['qty'] * ltp
             inv = d['qty'] * d['avg']
@@ -553,45 +735,39 @@ class PortfolioManager:
 
 PortfolioManager.init()
 
-# --- 7. MAIN UI LAYOUT ---
-st.markdown("<div class='titan-header'>Market Master Titan Infinity</div>", unsafe_allow_html=True)
+# --- 7. UI: TITLE & HEADER ---
+st.markdown("<div class='titan-header'>Titan Infinity Ultra</div>", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.header("🎮 SYSTEM CONTROL")
-    capital_input = st.number_input("SIMULATION CAPITAL (₹)", 10000, 10000000, 100000, 10000)
-    risk_tol = st.slider("RISK TOLERANCE", 0.5, 5.0, 2.0, 0.1)
+    st.header("CONTROLS")
+    sim_cap = st.number_input("CAPITAL (₹)", 10000, 10000000, 100000, 10000)
+    risk_factor = st.slider("RISK %", 0.5, 5.0, 2.0, 0.1)
     
     st.markdown("---")
-    st.markdown("### 💼 PORTFOLIO LIVE")
+    st.markdown("### PORTFOLIO")
     cash, inv, cur, h_list = PortfolioManager.get_metrics()
-    st.metric("CASH BALANCE", f"₹{cash:,.2f}")
-    st.metric("NET WORTH", f"₹{cash + cur:,.2f}", delta=f"{(cash+cur)-1000000:,.2f}")
+    st.metric("CASH", f"₹{cash:,.2f}")
+    st.metric("EQUITY", f"₹{cash + cur:,.2f}", delta=f"{(cash+cur)-1000000:,.2f}")
     
-    if st.button("🔴 RESET SIMULATION"):
+    if st.button("RESET ALL"):
         st.session_state['portfolio'] = {'balance': 1000000.0, 'holdings': {}, 'history': []}
         st.rerun()
 
-# Tabs
-main_tabs = st.tabs([
-    "🔥 TITAN SCANNER", 
-    "⚡ INSTANT TERMINAL", 
-    "🔬 DEEP DIVE", 
-    "🧠 KNOWLEDGE BASE", 
-    "💎 PORTFOLIO HUB", 
-    "⚖️ RISK CALCULATOR"
-])
+# --- 8. TABS (MAIN NAVIGATION) ---
+# Shorter names for mobile compatibility
+tabs = st.tabs(["🚀 SCAN", "⚡ TERM", "🔬 DEEP", "🧠 INFO", "💎 PORT", "⚖️ RISK", "🔄 TEST"])
 
 # --- TAB 1: SCANNER ---
-with main_tabs[0]:
-    c1, c2 = st.columns([3, 1])
+with tabs[0]:
+    c1, c2 = st.columns([2, 1])
     with c1:
-        st.markdown("### 📡 REAL-TIME MARKET SCANNER")
-        mode = st.radio("SCAN ENGINE", ["INTRADAY", "DELIVERY"], horizontal=True)
+        st.markdown("<div class='section-header'>MARKET RADAR</div>", unsafe_allow_html=True)
+        mode = st.radio("ENGINE", ["INTRADAY", "DELIVERY"], horizontal=True, label_visibility="collapsed")
     with c2:
         st.write("")
-        st.write("")
-        if st.button("🚀 INITIATE SCAN"):
+        if st.button("INITIATE SCAN"):
+            # Nifty 50 Subset
             stocks = ['RELIANCE', 'TCS', 'HDFCBANK', 'ICICIBANK', 'INFY', 'SBIN', 'BHARTIARTL', 'ITC', 'LT', 'TATAMOTORS', 'M&M', 'MARUTI', 'ADANIENT', 'SUNPHARMA', 'TITAN', 'BAJFINANCE', 'ULTRACEMCO', 'NTPC', 'POWERGRID', 'TATASTEEL', 'JSWSTEEL', 'COALINDIA', 'HINDALCO', 'GRASIM', 'CIPLA', 'WIPRO', 'DLF', 'ZOMATO', 'PAYTM', 'HAL', 'BEL', 'TRENT']
             
             res = []
@@ -601,8 +777,9 @@ with main_tabs[0]:
                 bar.progress((i+1)/len(stocks))
                 try:
                     ma = MarketAnalyzer(s+".NS")
-                    p = "5d" if mode == "INTRADAY" else "1y"
-                    intr = "15m" if mode == "INTRADAY" else "1d"
+                    # Timeframes
+                    if mode == "INTRADAY": p, intr = "5d", "15m"
+                    else: p, intr = "1y", "1d"
                     
                     if ma.get_data(p, intr):
                         ma.process_technical_data()
@@ -627,237 +804,253 @@ with main_tabs[0]:
             
             bar.empty()
             res.sort(key=lambda x: x['Score'], reverse=True)
-            st.session_state['scan_results'] = res
-            st.session_state['mode'] = mode
+            st.session_state['scan_res'] = res
+            st.session_state['scan_mode'] = mode
 
-    if 'scan_results' in st.session_state:
-        results = st.session_state['scan_results']
+    if 'scan_res' in st.session_state:
+        results = st.session_state['scan_res']
         if not results:
-            st.warning("No high-probability setups found.")
+            st.warning("No opportunities found.")
         else:
-            top_cols = st.columns(3)
-            for idx in range(min(3, len(results))):
-                item = results[idx]
-                with top_cols[idx]:
+            # Top 3 Cards
+            cols = st.columns(3)
+            for i in range(min(3, len(results))):
+                item = results[i]
+                with cols[i]:
                     st.markdown(f"""
-                    <div class='stat-card'>
+                    <div class='stat-card stat-card-hover'>
                         <div class='ticker-symbol'>{item['Symbol']}</div>
                         <div class='ticker-price'>₹{item['Price']:.2f}</div>
-                        <div class='signal-badge signal-buy'>SCORE: {item['Score']}</div>
-                        <div style='margin-top:10px; font-size:12px; color:#aaa;'>
-                            TGT: <span style='color:#00E676'>₹{item['TGT']:.2f}</span> | SL: <span style='color:#FF1744'>₹{item['SL']:.2f}</span>
+                        <span class='badge badge-buy'>SCORE: {item['Score']}</span>
+                        <div style='margin-top:10px; font-size:11px; color:#aaa'>
+                            TGT: <span style='color:#00E676'>₹{item['TGT']:.2f}</span><br>
+                            SL: <span style='color:#FF1744'>₹{item['SL']:.2f}</span>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-                    if st.button(f"OPEN DECK {item['Symbol']}", key=f"btn_{idx}"):
+                    if st.button(f"OPEN {item['Symbol']}", key=f"b_{i}"):
                         st.session_state['active_stock'] = item
 
-            st.markdown("### 📋 FULL MARKET REPORT")
+            st.markdown("### 📋 FULL REPORT")
             for item in results:
-                with st.expander(f"{item['Symbol']} | Score: {item['Score']} | ₹{item['Price']:.2f}"):
+                with st.expander(f"{item['Symbol']} | {item['Score']}% | ₹{item['Price']:.2f}"):
                     c1, c2, c3 = st.columns([1, 2, 1])
-                    with c1: st.progress(item['Score']); st.write(f"Vol (ATR): {item['ATR']:.2f}")
+                    with c1: st.progress(item['Score']); st.write(f"ATR: {item['ATR']:.2f}")
                     with c2: 
                         for r in item['Reasons']: st.markdown(f"✅ {r}")
                     with c3:
                         if st.button(f"ANALYZE {item['Symbol']}", key=f"an_{item['Symbol']}"):
                             st.session_state['active_stock'] = item
 
-# --- TAB 2: INSTANT TERMINAL (NEW FEATURE) ---
-with main_tabs[1]:
-    st.markdown("### ⚡ INSTANT TRADING TERMINAL")
-    st.caption("Search ANY stock, view live data, and execute virtual trades instantly.")
-    
-    col_search, col_action = st.columns([3, 1])
-    with col_search:
-        search_sym = st.text_input("ENTER STOCK SYMBOL (e.g., ZOMATO, MRF, IDEA)", "RELIANCE")
-    with col_action:
+# --- TAB 2: INSTANT TERMINAL ---
+with tabs[1]:
+    st.markdown("<div class='section-header'>INSTANT TERMINAL</div>", unsafe_allow_html=True)
+    c_src, c_btn = st.columns([3, 1])
+    with c_src:
+        u_tick = st.text_input("ENTER SYMBOL (e.g. ZOMATO)", "RELIANCE")
+    with c_btn:
         st.write("")
         st.write("")
-        btn_search = st.button("FETCH DATA")
+        fetch_btn = st.button("FETCH")
         
-    if btn_search or search_sym:
-        sym_full = search_sym.upper() if search_sym.upper().endswith(".NS") else search_sym.upper() + ".NS"
-        
-        with st.spinner("Fetching Real-Time Data..."):
-            ma_instant = MarketAnalyzer(sym_full)
-            # Default to Delivery logic for instant check
-            has_data = ma_instant.get_data("1y", "1d")
+    if fetch_btn or u_tick:
+        sym = u_tick.upper() + ".NS" if not u_tick.endswith(".NS") else u_tick.upper()
+        ma = MarketAnalyzer(sym)
+        if ma.get_data("1y", "1d"):
+            ma.process_technical_data()
+            sc, rs = ma.score_stock("DELIVERY")
             
-            if has_data:
-                ma_instant.process_technical_data()
-                score, reasons = ma_instant.score_stock("DELIVERY")
-                curr_price = ma_instant.df['Close'].iloc[-1]
-                
-                # Layout
-                st.markdown("---")
-                header_col, score_col = st.columns([2, 1])
-                
-                with header_col:
-                    st.markdown(f"<div class='ticker-symbol'>{search_sym.upper()}</div>", unsafe_allow_html=True)
-                    st.markdown(f"<div class='ticker-price'>₹{curr_price:.2f}</div>", unsafe_allow_html=True)
-                
-                with score_col:
-                    st.metric("TITAN SCORE", f"{score}/100", delta="High Confidence" if score > 60 else "Low Confidence")
-                
-                # Chart
-                st.plotly_chart(ChartFactory.create_advanced_chart(ma_instant.df, search_sym.upper(), "DELIVERY"), use_container_width=True)
-                
-                # Trading Interface
-                st.markdown("### 🏦 EXECUTE ORDER")
-                
-                trade_c1, trade_c2 = st.columns(2)
-                
-                with trade_c1:
-                    st.markdown(f"""
-                    <div class="stat-card">
-                        <h4>🟢 BUY (LONG)</h4>
-                        <p style="font-size:12px; color:#aaa;">Add to Portfolio using Cash Balance.</p>
-                        <p>Available Cash: <span style="color:#00E676; font-weight:bold;">₹{st.session_state['portfolio']['balance']:,.2f}</span></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    b_qty = st.number_input("Buy Quantity", 1, 100000, 10, key="b_qty")
-                    st.markdown(f"**Total Cost:** ₹{b_qty * curr_price:,.2f}")
-                    
-                    if st.button("CONFIRM BUY ORDER", key="buy_btn"):
-                        success, msg = PortfolioManager.buy(search_sym.upper(), b_qty, curr_price)
-                        if success: st.success(msg)
-                        else: st.error(msg)
-                        
-                with trade_c2:
-                    st.markdown(f"""
-                    <div class="stat-card" style="border-color:#FF1744;">
-                        <h4>🔴 SELL (EXIT)</h4>
-                        <p style="font-size:12px; color:#aaa;">Sell existing holdings to release Cash.</p>
-                        <p>Current Holding: <span style="color:#FFC400; font-weight:bold;">{st.session_state['portfolio']['holdings'].get(search_sym.upper(), {'qty': 0})['qty']} Shares</span></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    s_qty = st.number_input("Sell Quantity", 1, 100000, 1, key="s_qty")
-                    st.markdown(f"**Total Value:** ₹{s_qty * curr_price:,.2f}")
-                    
-                    if st.button("CONFIRM SELL ORDER", key="sell_btn"):
-                        success, msg = PortfolioManager.sell(search_sym.upper(), s_qty, curr_price)
-                        if success: st.success(msg)
-                        else: st.error(msg)
-                        
-            else:
-                st.error("Stock Not Found. Please check symbol (e.g., try 'TATASTEEL' instead of 'TATA').")
+            curr = ma.df['Close'].iloc[-1]
+            
+            st.markdown("---")
+            col_inf, col_sc = st.columns([2, 1])
+            with col_inf:
+                st.markdown(f"<div class='ticker-symbol'>{u_tick.upper()}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='ticker-price'>₹{curr:.2f}</div>", unsafe_allow_html=True)
+            with col_sc:
+                st.metric("TITAN SCORE", f"{sc}/100")
+            
+            st.plotly_chart(ChartFactory.create_advanced_chart(ma.df, u_tick, "DELIVERY"), use_container_width=True)
+            
+            # Trading
+            t1, t2 = st.columns(2)
+            with t1:
+                st.markdown("#### 🟢 BUY")
+                qty_b = st.number_input("Qty Buy", 1, 100000, 10, key="qb")
+                if st.button("CONFIRM BUY"):
+                    s, m = PortfolioManager.buy(u_tick.upper(), qty_b, curr)
+                    if s: st.success(m)
+                    else: st.error(m)
+            with t2:
+                st.markdown("#### 🔴 SELL")
+                qty_s = st.number_input("Qty Sell", 1, 100000, 10, key="qs")
+                if st.button("CONFIRM SELL"):
+                    s, m = PortfolioManager.sell(u_tick.upper(), qty_s, curr)
+                    if s: st.success(m)
+                    else: st.error(m)
+        else:
+            st.error("Stock not found. Try NSE symbol.")
 
 # --- TAB 3: DEEP DIVE ---
-with main_tabs[2]:
+with tabs[2]:
     if 'active_stock' in st.session_state:
         data = st.session_state['active_stock']
         df = data['DF']
-        symbol = data['Symbol']
+        tkr = data['Symbol']
         
-        st.markdown(f"<div class='titan-header'>{symbol} INTELLIGENCE</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='section-header'>{tkr} DEEP DIVE</div>", unsafe_allow_html=True)
         
-        k1, k2, k3, k4 = st.columns(4)
-        k1.metric("LATEST PRICE", f"₹{data['Price']:.2f}")
-        k2.metric("ALGO SCORE", f"{data['Score']}/100")
-        k3.metric("R:R RATIO", f"1:{(data['TGT']-data['Price'])/(data['Price']-data['SL']):.2f}")
-        k4.metric("VOLATILITY", f"{data['ATR']:.2f}")
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("PRICE", f"₹{data['Price']:.2f}")
+        m2.metric("SCORE", f"{data['Score']}/100")
+        m3.metric("TARGET", f"₹{data['TGT']:.2f}")
+        m4.metric("ATR", f"{data['ATR']:.2f}")
         
-        r1 = st.columns([3, 1])
-        with r1[0]:
-            st.plotly_chart(ChartFactory.create_advanced_chart(df, symbol, st.session_state['mode']), use_container_width=True)
-            ma = MarketAnalyzer(symbol)
-            ma.df = df
-            lvls = ma.calculate_pivot_points()
-            st.markdown("#### 🎯 INSTITUTIONAL PIVOTS")
-            pc1, pc2, pc3, pc4, pc5 = st.columns(5)
-            pc1.metric("S2", f"{lvls['S2']:.2f}"); pc2.metric("S1", f"{lvls['S1']:.2f}")
-            pc3.metric("PIVOT", f"{lvls['P']:.2f}"); pc4.metric("R1", f"{lvls['R1']:.2f}"); pc5.metric("R2", f"{lvls['R2']:.2f}")
+        c_main, c_side = st.columns([3, 1])
+        with c_main:
+            st.plotly_chart(ChartFactory.create_advanced_chart(df, tkr, st.session_state.get('scan_mode', 'DELIVERY')), use_container_width=True)
             
-        with r1[1]:
+            ma = MarketAnalyzer(tkr)
+            ma.df = df
+            pivs = ma.calculate_pivot_points()
+            st.markdown("#### 🎯 PIVOT LEVELS")
+            pc1, pc2, pc3, pc4, pc5 = st.columns(5)
+            pc1.metric("S2", f"{pivs['S2']:.2f}")
+            pc2.metric("S1", f"{pivs['S1']:.2f}")
+            pc3.metric("PIVOT", f"{pivs['P']:.2f}")
+            pc4.metric("R1", f"{pivs['R1']:.2f}")
+            pc5.metric("R2", f"{pivs['R2']:.2f}")
+            
+        with c_side:
             st.plotly_chart(ChartFactory.create_gauge(data['Score']), use_container_width=True)
+            
+            # Quick Trade Box
             st.markdown(f"""
-            <div class="stat-card" style="border-left: 4px solid #2979FF;">
+            <div class='stat-card' style='border-left:4px solid #2979FF'>
                 <h4>🏦 QUICK TRADE</h4>
-                <div style="margin-bottom:10px;">
-                    <span style="color:#FF1744; font-weight:bold;">STOP: ₹{data['SL']:.2f}</span><br>
-                    <span style="color:#00E676; font-weight:bold;">TARGET: ₹{data['TGT']:.2f}</span>
+                <div style='margin:10px 0;'>
+                    <span style='color:#FF1744; font-weight:bold'>SL: ₹{data['SL']:.2f}</span><br>
+                    <span style='color:#00E676; font-weight:bold'>TGT: ₹{data['TGT']:.2f}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
             
-            risk_amt = capital_input * (risk_tol / 100)
-            risk_per_share = data['Price'] - data['SL']
-            rec_qty = int(risk_amt / risk_per_share) if risk_per_share > 0 else 0
+            risk_amt = sim_cap * (risk_factor/100)
+            risk_share = data['Price'] - data['SL']
+            rec_q = int(risk_amt/risk_share) if risk_share > 0 else 0
             
-            st.info(f"Safe Qty: {rec_qty}")
-            qty_in = st.number_input("QTY", 1, 100000, rec_qty, key="dd_qty")
-            
-            if st.button(f"BUY {symbol}"):
-                s, m = PortfolioManager.buy(symbol, qty_in, data['Price'])
+            st.info(f"Risk-Safe Qty: {rec_q}")
+            q_in = st.number_input("Order Qty", 1, 100000, rec_q, key="ddq")
+            if st.button(f"BUY {tkr}"):
+                s, m = PortfolioManager.buy(tkr, q_in, data['Price'])
                 if s: st.success(m)
                 else: st.error(m)
+                
+        # Patterns
+        st.markdown("#### 🕯️ PATTERNS")
+        pats = ma.detect_candlestick_patterns()
+        if pats:
+            for p in pats: st.write(f"• {p}")
+        else: st.write("No major patterns detected.")
+
     else:
-        st.info("👈 Select a stock from Scanner or use Instant Terminal.")
+        st.info("Select stock from Scanner first.")
 
-# --- TAB 4: KNOWLEDGE BASE ---
-with main_tabs[3]:
-    st.header("🧠 TITAN ACADEMY")
-    kt1, kt2 = st.tabs(["INDICATORS", "STRATEGIES"])
-    with kt1:
-        with st.expander("Relative Strength Index (RSI)"): st.write("Momentum oscillator measuring speed/change of price movements.")
-        with st.expander("MACD"): st.write("Trend-following momentum indicator showing relationship between two moving averages.")
-        with st.expander("Bollinger Bands"): st.write("Volatility bands placed above and below a moving average.")
-    with kt2:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("#### 🚀 INTRADAY MOMENTUM")
-            st.info("Entry: RSI > 50, Price > VWAP, SuperTrend Green.\nExit: RSI > 75 or SL Hit.\nRisk: 1.5x ATR.")
-        with c2:
-            st.markdown("#### 💎 GOLDEN CROSS")
-            st.success("Entry: 50 SMA crosses above 200 SMA.\nExit: Close below 50 SMA.\nRisk: 10% Trailing.")
+# --- TAB 4: KNOWLEDGE ---
+with tabs[3]:
+    st.markdown("<div class='section-header'>TITAN ACADEMY</div>", unsafe_allow_html=True)
+    k1, k2 = st.columns(2)
+    with k1:
+        st.markdown("#### INDICATORS")
+        with st.expander("RSI (Relative Strength)"): st.write("Momentum oscillator. >70 Overbought, <30 Oversold.")
+        with st.expander("MACD"): st.write("Trend indicator. Line crossing Signal line indicates momentum shift.")
+        with st.expander("SuperTrend"): st.write("Excellent for trailing stop losses in trending markets.")
+    with k2:
+        st.markdown("#### STRATEGIES")
+        st.info("**INTRADAY:** Use 15m timeframe. Buy when Price > VWAP and RSI > 50.")
+        st.success("**DELIVERY:** Use Daily timeframe. Buy on Golden Cross (50 SMA > 200 SMA).")
 
-# --- TAB 5: PORTFOLIO HUB ---
-with main_tabs[4]:
-    st.header("💎 ASSET MANAGEMENT")
+# --- TAB 5: PORTFOLIO ---
+with tabs[4]:
+    st.markdown("<div class='section-header'>PORTFOLIO HUB</div>", unsafe_allow_html=True)
     cash, inv, cur, h_list = PortfolioManager.get_metrics()
     
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("TOTAL EQUITY", f"₹{cash+cur:,.2f}")
     m2.metric("CASH", f"₹{cash:,.2f}")
     m3.metric("INVESTED", f"₹{inv:,.2f}")
-    m4.metric("UNREALIZED P&L", f"₹{cur-inv:,.2f}", delta_color="normal" if (cur-inv)==0 else ("inverse" if (cur-inv)<0 else "normal"))
+    m4.metric("P&L", f"₹{cur-inv:,.2f}")
     
-    if not h_list:
-        st.info("Portfolio is empty.")
-    else:
+    if h_list:
         df_p = pd.DataFrame(h_list)
         def color_pnl(val): return f'color: {"#00E676" if val >= 0 else "#FF1744"}'
         st.dataframe(
             df_p.style.applymap(color_pnl, subset=['P&L', 'P&L %'])
-            .format({"Value": "₹{:.2f}", "P&L": "₹{:.2f}", "P&L %": "{:.2f}%", "LTP": "₹{:.2f}"})
+            .format({"Value": "₹{:.2f}", "P&L": "₹{:.2f}", "P&L %": "{:.2f}%"})
         )
-        st.markdown("### 📜 HISTORY")
-        if st.session_state['portfolio']['history']:
-            st.dataframe(pd.DataFrame(st.session_state['portfolio']['history']).sort_values(by="date", ascending=False))
+    else:
+        st.info("No active positions.")
 
-# --- TAB 6: RISK CALCULATOR ---
-with main_tabs[5]:
-    st.header("⚖️ RISK ENGINE")
-    rc1, rc2 = st.columns(2)
-    with rc1:
-        st.subheader("KELLY CRITERION")
-        wp = st.slider("Win Probability (%)", 10, 90, 50, 5)
-        wlr = st.number_input("Win/Loss Ratio", 0.5, 10.0, 2.0, 0.1)
-        kp = ((wlr * (wp/100)) - (1 - (wp/100))) / wlr
-        st.metric("Optimal Bet Size", f"{max(0, kp*100):.2f}%")
-    with rc2:
-        st.subheader("POSITION SIZER")
-        ac = st.number_input("Account Size", value=100000)
+# --- TAB 6: RISK ---
+with tabs[5]:
+    st.markdown("<div class='section-header'>RISK CALCULATOR</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Kelly Criterion")
+        wp = st.slider("Win Rate (%)", 10, 90, 50)
+        rr = st.number_input("Risk:Reward", 0.5, 10.0, 2.0)
+        kp = ((rr * (wp/100)) - (1 - (wp/100))) / rr
+        st.metric("Optimal Bet %", f"{max(0, kp*100):.2f}%")
+    with c2:
+        st.subheader("Position Sizing")
+        acc = st.number_input("Account", value=100000)
         rp = st.number_input("Risk %", value=1.0)
         ep = st.number_input("Entry", value=100.0)
         sl = st.number_input("Stop", value=95.0)
-        risk_share = ep - sl
-        if risk_share > 0:
-            shares = math.floor((ac * (rp/100)) / risk_share)
-            st.success(f"Buy {shares} Shares")
-            st.info(f"Total Cost: ₹{shares*ep:,.2f}")
-        else: st.warning("Invalid Stop Loss")
+        risk_per_share = ep - sl
+        if risk_per_share > 0:
+            qty = math.floor((acc * (rp/100)) / risk_per_share)
+            st.success(f"Position Size: {qty} Shares")
+
+# --- TAB 7: BACKTEST (NEW) ---
+with tabs[6]:
+    st.markdown("<div class='section-header'>STRATEGY BACKTESTER</div>", unsafe_allow_html=True)
+    
+    bt_col1, bt_col2 = st.columns([1, 3])
+    with bt_col1:
+        bt_ticker = st.text_input("Ticker", "RELIANCE")
+        bt_strat = st.selectbox("Strategy", ["CROSSOVER", "MOMENTUM", "SUPERTREND"])
+        if st.button("RUN BACKTEST"):
+            ma = MarketAnalyzer(bt_ticker+".NS")
+            if ma.get_data("2y", "1d"):
+                ma.process_technical_data()
+                be = BacktestEngine(ma.df, 100000)
+                eq, tr = be.run_strategy(bt_strat)
+                st.session_state['bt_res'] = (eq, tr, be.get_metrics())
+            else:
+                st.error("Data fetch failed")
+                
+    with bt_col2:
+        if 'bt_res' in st.session_state:
+            eq, tr, met = st.session_state['bt_res']
+            
+            # Metrics Row
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Return", f"{met['Total Return']:.2f}%")
+            m2.metric("Win Rate", f"{met['Win Rate']:.2f}%")
+            m3.metric("Trades", met['Trades Executed'])
+            m4.metric("Drawdown", f"{met['Max Drawdown']:.2f}%")
+            
+            # Equity Curve
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(y=eq, mode='lines', name='Equity', line=dict(color='#00E676')))
+            fig.update_layout(title="Equity Curve", template="plotly_dark", height=300)
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Trades Table
+            if tr:
+                st.write("Recent Trades")
+                st.dataframe(pd.DataFrame(tr).tail())
 
 
 #key
@@ -867,4 +1060,5 @@ with main_tabs[5]:
  # WIPRO
 
  # 230.72
+
 
